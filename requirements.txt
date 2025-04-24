@@ -1,1 +1,6 @@
 plotly 
+streamlit
+plotly
+scikit-learn
+pandas
+numpy
