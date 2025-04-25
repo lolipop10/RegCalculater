@@ -2,11 +2,18 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from math import sqrt
-
+import io
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+
+# PDF option (need fpdf)
+try:
+    from fpdf import FPDF
+    has_fpdf = True
+except ImportError:
+    has_fpdf = False
 
 st.set_page_config(page_title="Modélisation Régression", layout="wide")
 
@@ -33,7 +40,6 @@ if uploaded_file:
     # Choix des colonnes pour X et Y
     colonnes = df.columns.tolist()
     st.sidebar.header("🔧 Sélection des variables")
-
     x_cols = st.sidebar.multiselect("Variables explicatives (X)", colonnes)
     numeric_columns = df.select_dtypes(include='number').columns.tolist()
     y_col = st.sidebar.selectbox("Variable à prédire (Y)", numeric_columns)
@@ -72,9 +78,50 @@ if uploaded_file:
             st.write(f"**MAE** (Erreur Absolue Moyenne) : {mae:.3f}")
             st.write(f"**RMSE** (Erreur Quadratique Moyenne) : {rmse:.3f}")
 
-            # Visualisation dynamique avec Plotly
-            st.subheader("📉 Graphique dynamique des prédictions")
+            # 📐 Affichage de l'équation (pour Régression Linéaire uniquement)
+            if model_choice == "Régression Linéaire":
+                coefficients = model.coef_
+                intercept = model.intercept_
+                equation = f"{y_col} = " + " + ".join(
+                    [f"{coef:.3f} * {col}" for coef, col in zip(coefficients, x_cols)]
+                ) + f" + {intercept:.3f}"
 
+                st.markdown("### 📐 Équation de la Régression Linéaire")
+                st.code(equation, language="python")
+
+                # 📄 Télécharger l'équation en TXT
+                equation_txt = f"Équation de la Régression Linéaire\n\n{equation}"
+                txt_buffer = io.StringIO()
+                txt_buffer.write(equation_txt)
+
+                st.download_button(
+                    label="📄 Télécharger l'équation (.txt)",
+                    data=txt_buffer.getvalue(),
+                    file_name="equation_regression.txt",
+                    mime="text/plain"
+                )
+
+                # 📄 Télécharger l'équation en PDF (si disponible)
+                if has_fpdf:
+                    pdf = FPDF()
+                    pdf.add_page()
+                    pdf.set_font("Arial", size=12)
+                    pdf.multi_cell(0, 10, equation_txt)
+                    pdf_buffer = io.BytesIO()
+                    pdf.output(pdf_buffer)
+                    pdf_buffer.seek(0)
+
+                    st.download_button(
+                        label="📄 Télécharger l'équation (.pdf)",
+                        data=pdf_buffer,
+                        file_name="equation_regression.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.info("📎 Pour activer le téléchargement en PDF, ajoute `fpdf` dans ton fichier requirements.txt.")
+
+            # 📉 Visualisation dynamique avec Plotly
+            st.subheader("📉 Graphique dynamique des prédictions")
             results_df = pd.DataFrame({
                 "Valeur Réelle": y_test,
                 "Valeur Prédite": y_pred
@@ -85,8 +132,7 @@ if uploaded_file:
                 x="Valeur Réelle",
                 y="Valeur Prédite",
                 title="Réel vs Prédit",
-                labels={"Valeur Réelle": "CR Réel", "Valeur Prédite": "CR Prédit"},
-                trendline="ols"
+                labels={"Valeur Réelle": "CR Réel", "Valeur Prédite": "CR Prédit"}
             )
             fig.update_layout(
                 legend_title_text="Légende",
