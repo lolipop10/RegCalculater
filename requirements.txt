@@ -1,7 +1,7 @@
-plotly 
-streamlit
-plotly
-scikit-learn
-pandas
 numpy
+openpyxl
+streamlit
+pandas
+scikit-learn>=0.22
+plotly
 openpyxl
