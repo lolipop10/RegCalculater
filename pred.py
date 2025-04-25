@@ -65,12 +65,45 @@ if uploaded_file:
             # Résultats
             r2 = r2_score(y_test, y_pred)
             mae = mean_absolute_error(y_test, y_pred)
-            rmse = sqrt(mean_squared_error(y_test, y_pred))  # Remplace squared=False
+            rmse = sqrt(mean_squared_error(y_test, y_pred))
 
             st.subheader("📊 Résultats du Modèle")
             st.write(f"**R² Score** : {r2:.3f}")
             st.write(f"**MAE** (Erreur Absolue Moyenne) : {mae:.3f}")
             st.write(f"**RMSE** (Erreur Quadratique Moyenne) : {rmse:.3f}")
+
+            # 🔍 Affichage de l'équation ou de l'importance
+            st.subheader("📐 Équation du Modèle / Importance des Variables")
+
+            if model_choice == "Régression Linéaire":
+                terms = []
+                latex_terms = []
+                for i, col in enumerate(x_cols):
+                    coef = model.coef_[i]
+                    if abs(coef) < 1e-4:
+                        formatted_coef = f"{coef:.2e}"
+                        latex_coef = formatted_coef.replace("e", "\\times 10^{") + "}"
+                    else:
+                        formatted_coef = f"{coef:.3f}"
+                        latex_coef = formatted_coef
+                    terms.append(f"{formatted_coef} × {col}")
+                    latex_terms.append(f"{latex_coef} \\times {col}")
+
+                intercept = model.intercept_
+                equation = f"{y_col} = " + " + ".join(terms) + f" + {intercept:.3f}"
+                st.code(equation, language="markdown")
+
+                latex_eq = f"{y_col} = " + " + ".join(latex_terms) + f" + {intercept:.3f}"
+                st.latex(latex_eq)
+
+            else:
+                importances = model.feature_importances_
+                importance_df = pd.DataFrame({
+                    "Variable": x_cols,
+                    "Importance": importances
+                }).sort_values(by="Importance", ascending=False)
+
+                st.dataframe(importance_df)
 
             # Visualisation dynamique avec Plotly
             st.subheader("📉 Graphique dynamique des prédictions")
