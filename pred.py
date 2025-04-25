@@ -11,10 +11,10 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 st.set_page_config(page_title="Modélisation Régression", layout="wide")
 
 # Titre de l'application
-st.title("Modélisation de Régression")
+st.title("📈 Application de Modélisation de Régression")
 
 # Upload du fichier Excel
-uploaded_file = st.file_uploader("Charger un fichier Excel", type=["xlsx"])
+uploaded_file = st.file_uploader("📤 Charger un fichier Excel", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
@@ -22,7 +22,7 @@ if uploaded_file:
     st.dataframe(df.head())
 
     # 🔎 Zone de filtre
-    st.sidebar.header("Filtrage des données")
+    st.sidebar.header("🧰 Filtrage des données")
     filtre_colonne = st.sidebar.selectbox("Choisir une colonne pour filtrer :", options=["-- Aucun filtre --"] + df.columns.tolist())
 
     if filtre_colonne != "-- Aucun filtre --":
@@ -32,7 +32,7 @@ if uploaded_file:
 
     # Choix des colonnes pour X et Y
     colonnes = df.columns.tolist()
-    st.sidebar.header("Sélection des variables")
+    st.sidebar.header("🔧 Sélection des variables")
 
     x_cols = st.sidebar.multiselect("Variables explicatives (X)", colonnes)
     numeric_columns = df.select_dtypes(include='number').columns.tolist()
@@ -45,7 +45,7 @@ if uploaded_file:
         y = data[y_col]
 
         if not pd.api.types.is_numeric_dtype(y):
-            st.error(f"La variable à prédire '{y_col}' n'est pas numérique.")
+            st.error(f"❌ La variable à prédire '{y_col}' n'est pas numérique.")
         else:
             # Choix du modèle
             model_choice = st.sidebar.selectbox("Choisir le modèle :", ["Régression Linéaire", "Random Forest"])
@@ -67,13 +67,13 @@ if uploaded_file:
             mae = mean_absolute_error(y_test, y_pred)
             rmse = sqrt(mean_squared_error(y_test, y_pred))
 
-            st.subheader("Résultats du Modèle")
+            st.subheader("📊 Résultats du Modèle")
             st.write(f"**R² Score** : {r2:.3f}")
             st.write(f"**MAE** (Erreur Absolue Moyenne) : {mae:.3f}")
             st.write(f"**RMSE** (Erreur Quadratique Moyenne) : {rmse:.3f}")
 
             # 🔍 Affichage de l'équation ou de l'importance
-            st.subheader("Équation du Modèle / Importance des Variables")
+            st.subheader("📐 Équation du Modèle / Importance des Variables")
 
             if model_choice == "Régression Linéaire":
                 terms = []
