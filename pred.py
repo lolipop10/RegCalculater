@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from math import sqrt
 
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -23,7 +24,7 @@ if uploaded_file:
     # 🔎 Zone de filtre
     st.sidebar.header("🧰 Filtrage des données")
     filtre_colonne = st.sidebar.selectbox("Choisir une colonne pour filtrer :", options=["-- Aucun filtre --"] + df.columns.tolist())
-    
+
     if filtre_colonne != "-- Aucun filtre --":
         unique_values = df[filtre_colonne].dropna().unique().tolist()
         selected_value = st.sidebar.selectbox(f"Valeur de '{filtre_colonne}' à filtrer :", unique_values)
@@ -32,58 +33,63 @@ if uploaded_file:
     # Choix des colonnes pour X et Y
     colonnes = df.columns.tolist()
     st.sidebar.header("🔧 Sélection des variables")
+
     x_cols = st.sidebar.multiselect("Variables explicatives (X)", colonnes)
-    y_col = st.sidebar.selectbox("Variable à prédire (Y)", colonnes)
+    numeric_columns = df.select_dtypes(include='number').columns.tolist()
+    y_col = st.sidebar.selectbox("Variable à prédire (Y)", numeric_columns)
 
     if x_cols and y_col:
-        # Nettoyage
+        # Nettoyage des données
         data = df[x_cols + [y_col]].dropna()
         X = data[x_cols]
         y = data[y_col]
 
-        # Choix du modèle
-        model_choice = st.sidebar.selectbox("Choisir le modèle :", ["Régression Linéaire", "Random Forest"])
-
-        # Split
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
-        # Modèle
-        if model_choice == "Régression Linéaire":
-            model = LinearRegression()
+        if not pd.api.types.is_numeric_dtype(y):
+            st.error(f"❌ La variable à prédire '{y_col}' n'est pas numérique.")
         else:
-            model = RandomForestRegressor(n_estimators=100, random_state=42)
+            # Choix du modèle
+            model_choice = st.sidebar.selectbox("Choisir le modèle :", ["Régression Linéaire", "Random Forest"])
 
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+            # Split des données
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-        # Résultats
-        r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
-        rmse = mean_squared_error(y_test, y_pred, squared=False)
+            # Création du modèle
+            if model_choice == "Régression Linéaire":
+                model = LinearRegression()
+            else:
+                model = RandomForestRegressor(n_estimators=100, random_state=42)
 
-        st.subheader("📊 Résultats du Modèle")
-        st.write(f"**R² Score** : {r2:.3f}")
-        st.write(f"**MAE** (Erreur Absolue Moyenne) : {mae:.3f}")
-        st.write(f"**RMSE** (Erreur Quadratique Moyenne) : {rmse:.3f}")
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
 
-        # Visualisation dynamique avec Plotly
-        st.subheader("📉 Graphique dynamique des prédictions")
+            # Résultats
+            r2 = r2_score(y_test, y_pred)
+            mae = mean_absolute_error(y_test, y_pred)
+            rmse = sqrt(mean_squared_error(y_test, y_pred))  # Remplace squared=False
 
-        results_df = pd.DataFrame({
-            "Valeur Réelle": y_test,
-            "Valeur Prédite": y_pred
-        })
+            st.subheader("📊 Résultats du Modèle")
+            st.write(f"**R² Score** : {r2:.3f}")
+            st.write(f"**MAE** (Erreur Absolue Moyenne) : {mae:.3f}")
+            st.write(f"**RMSE** (Erreur Quadratique Moyenne) : {rmse:.3f}")
 
-        fig = px.scatter(
-            results_df,
-            x="Valeur Réelle",
-            y="Valeur Prédite",
-            title="Réel vs Prédit",
-            labels={"Valeur Réelle": "CR Réel", "Valeur Prédite": "CR Prédit"},
-            trendline="ols"
-        )
-        fig.update_layout(
-            legend_title_text="Légende",
-            showlegend=True
-        )
-        st.plotly_chart(fig, use_container_width=True)
+            # Visualisation dynamique avec Plotly
+            st.subheader("📉 Graphique dynamique des prédictions")
+
+            results_df = pd.DataFrame({
+                "Valeur Réelle": y_test,
+                "Valeur Prédite": y_pred
+            })
+
+            fig = px.scatter(
+                results_df,
+                x="Valeur Réelle",
+                y="Valeur Prédite",
+                title="Réel vs Prédit",
+                labels={"Valeur Réelle": "CR Réel", "Valeur Prédite": "CR Prédit"},
+                trendline="ols"
+            )
+            fig.update_layout(
+                legend_title_text="Légende",
+                showlegend=True
+            )
+            st.plotly_chart(fig, use_container_width=True)
