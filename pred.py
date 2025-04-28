@@ -7,50 +7,49 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 
-# Configuration de la page Streamlit
+# Configuration de la page
 st.set_page_config(page_title="📈 Modélisation de Régression", layout="wide")
 
-# Titre
-st.title("📊 Application de Modélisation - Régression & Random Forest")
+# Titre principal
+st.title("📈 Application de Modélisation de Régression")
 
 # Upload du fichier
 uploaded_file = st.file_uploader("📤 Charger un fichier Excel", type=["xlsx"])
 
 if uploaded_file:
+    # Lecture du fichier
     df = pd.read_excel(uploaded_file)
-    st.subheader("🗂️ Aperçu du fichier chargé :")
+    
+    st.subheader("🗂️ Aperçu des données chargées :")
     st.dataframe(df.head())
 
-    # --- Zone Filtrage ---
-    st.sidebar.header("🔎 Filtrer les Données")
-    filtre_colonne = st.sidebar.selectbox("Sélectionner une colonne pour filtrer :", ["-- Aucun filtre --"] + df.columns.tolist())
-    
+    # Zone de filtre sur la sidebar
+    st.sidebar.header("🧰 Filtrage des Données")
+    filtre_colonne = st.sidebar.selectbox("Choisir une colonne pour filtrer :", options=["-- Aucun filtre --"] + df.columns.tolist())
+
     if filtre_colonne != "-- Aucun filtre --":
         unique_values = df[filtre_colonne].dropna().unique().tolist()
-        selected_value = st.sidebar.selectbox(f"Sélectionner une valeur :", unique_values)
+        selected_value = st.sidebar.selectbox(f"Valeur de '{filtre_colonne}' :", unique_values)
         df = df[df[filtre_colonne] == selected_value]
 
-    # --- Zone Modélisation ---
-    st.sidebar.header("⚙️ Paramètres du Modèle")
-
+    # Sélection des variables
+    st.sidebar.header("🔧 Sélection des Variables")
     colonnes = df.columns.tolist()
     x_cols = st.sidebar.multiselect("Variables explicatives (X)", colonnes)
-    y_col = st.sidebar.selectbox("Variable cible à prédire (Y)", colonnes)
+    y_col = st.sidebar.selectbox("Variable à prédire (Y)", colonnes)
 
-    model_choice = st.sidebar.selectbox("Choisir le Modèle :", ["Régression Linéaire", "Random Forest"])
-    split_option = st.sidebar.radio("Séparer les données en train/test ?", ["Oui", "Non (utiliser tout)"])
+    # Sélection du modèle
+    st.sidebar.header("⚙️ Modèle de Régression")
+    model_choice = st.sidebar.selectbox("Choisir le modèle :", ["Régression Linéaire", "Random Forest"])
 
     if x_cols and y_col:
-        # Nettoyage
+        # Préparation des données
         data = df[x_cols + [y_col]].dropna()
         X = data[x_cols]
         y = data[y_col]
 
-        # Séparation train/test
-        if split_option == "Oui":
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-        else:
-            X_train, X_test, y_train, y_test = X, X, y, y
+        # Séparation en train/test
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
         # Modèle
         if model_choice == "Régression Linéaire":
@@ -62,18 +61,19 @@ if uploaded_file:
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
 
-        # Résultats
+        # Évaluation
         r2 = r2_score(y_test, y_pred)
         mae = mean_absolute_error(y_test, y_pred)
-        rmse = mean_squared_error(y_test, y_pred, squared=False)
+        mse = mean_squared_error(y_test, y_pred)
+        rmse = mse ** 0.5  # Pas d'argument squared pour éviter les erreurs de compatibilité
 
-        st.subheader("📈 Résultats du Modèle")
-        st.metric("R² (Coefficient de détermination)", f"{r2:.3f}")
-        st.metric("MAE (Erreur Absolue Moyenne)", f"{mae:.3f}")
-        st.metric("RMSE (Erreur Quadratique Moyenne)", f"{rmse:.3f}")
+        st.subheader("📊 Résultats du Modèle")
+        st.metric("🎯 R² (Coefficient de Détermination)", f"{r2:.3f}")
+        st.metric("📏 MAE (Erreur Absolue Moyenne)", f"{mae:.3f}")
+        st.metric("📐 RMSE (Erreur Quadratique Moyenne)", f"{rmse:.3f}")
 
-        # Graphique dynamique Plotly
-        st.subheader("📉 Visualisation : Réel vs Prédit")
+        # Affichage dynamique
+        st.subheader("📉 Graphique Réel vs Prédit")
 
         results_df = pd.DataFrame({
             "Valeur Réelle": y_test,
@@ -84,19 +84,17 @@ if uploaded_file:
             results_df,
             x="Valeur Réelle",
             y="Valeur Prédite",
-            title="Réel vs Prédit",
+            title="Valeur Réelle vs Valeur Prédite",
             labels={"Valeur Réelle": "Y Réel", "Valeur Prédite": "Y Prédit"},
-            trendline="ols"
+            trendline="ols",
+            color_discrete_sequence=["#636EFA"]
         )
-
         fig.update_layout(
             legend_title_text="Légende",
             showlegend=True,
-            width=800,
             height=600
         )
-
         st.plotly_chart(fig, use_container_width=True)
 
-else:
-    st.info("📥 Veuillez charger un fichier Excel pour commencer.")
+    else:
+        st.warning("⚠️ Veuillez sélectionner au moins une variable explicative (X) et une variable cible (Y).")
