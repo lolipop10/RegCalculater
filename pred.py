@@ -70,5 +70,5 @@ if uploaded_file is not None:
     else:
         st.info("ℹ️ Veuillez sélectionner au moins une colonne pour X et une colonne pour Y.")
 else:
-    st.info("📤 Veuillez charger un fichier CSV pour commencer.")
+    st.info("Updating the APP")
 
