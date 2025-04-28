@@ -7,7 +7,7 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from math import sqrt
 
 # Chargement des données
-st.title("🧠 Application de Modélisation")
+st.title(" Application de Modélisation")
 
 uploaded_file = st.file_uploader("Chargez votre fichier CSV", type=["csv"])
 
