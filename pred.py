@@ -3,76 +3,113 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+import seaborn as sns
+import matplotlib.pyplot as plt
 from math import sqrt
 
-# Titre
-st.title("📈 Application de Modélisation - Fichier Excel")
+# Configuration de la page
+st.set_page_config(page_title="Modélisation Excel", layout="wide")
 
-# Chargement du fichier Excel
+# Titre
+st.title("📈 Application de Modélisation - Fichier Excel avec Graphes, Filtres et Choix de Méthode")
+
+# Upload du fichier
 uploaded_file = st.file_uploader("📤 Chargez votre fichier Excel (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     try:
+        # Lecture Excel
         data = pd.read_excel(uploaded_file)
         st.subheader("📄 Aperçu des données")
-        st.write(data.head())
+        st.dataframe(data, use_container_width=True)
 
-        st.sidebar.subheader("🔧 Paramètres")
+        st.sidebar.header("🔎 Paramètres de Modélisation")
 
-        # Sélection des colonnes
+        # Choix du modèle
+        modele_selectionne = st.sidebar.selectbox(
+            "Choisissez votre méthode de modélisation :",
+            ("Régression Linéaire", "Random Forest Regressor")
+        )
+
+        # Colonnes disponibles
         colonnes = data.columns.tolist()
-        x_cols = st.sidebar.multiselect("Sélectionnez les colonnes X", colonnes)
-        y_col = st.sidebar.selectbox("Sélectionnez la colonne Y (à prédire)", colonnes)
+
+        # Sélection de colonnes
+        x_cols = st.sidebar.multiselect("Sélectionnez les colonnes X (Variables indépendantes)", colonnes)
+        y_col = st.sidebar.selectbox("Sélectionnez la colonne Y (Variable cible)", colonnes)
 
         if x_cols and y_col:
             X = data[x_cols]
             y = data[y_col]
 
-            if len(X) == 0:
-                st.error("🚫 Aucune donnée disponible après sélection. Vérifiez vos colonnes.")
+            # Vérification taille des données
+            if len(data) < 2:
+                st.warning("⚠️ Pas assez de données pour split train/test. Modèle sur toutes les données.")
+                X_train, X_test, y_train, y_test = X, X, y, y
             else:
-                if len(X) < 2:
-                    st.warning("⚠️ Pas assez de données pour faire un split train/test. Utilisation de toutes les données pour l'entraînement.")
-                    X_train, X_test, y_train, y_test = X, X, y, y
-                else:
-                    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-                # Création et entraînement du modèle
+            # Création du modèle selon le choix
+            if modele_selectionne == "Régression Linéaire":
                 model = LinearRegression()
-                model.fit(X_train, y_train)
+            else:
+                model = RandomForestRegressor(n_estimators=100, random_state=42)
 
-                # Prédiction
-                y_pred = model.predict(X_test)
+            # Entrainement du modèle
+            model.fit(X_train, y_train)
 
-                # Calcul des métriques
-                if len(y_test) >= 2:
-                    r2 = r2_score(y_test, y_pred)
-                else:
-                    r2 = float('nan')
+            # Prédiction
+            y_pred = model.predict(X_test)
 
-                mae = mean_absolute_error(y_test, y_pred)
-                rmse = sqrt(mean_squared_error(y_test, y_pred))
+            # Calcul des métriques
+            if len(y_test) >= 2:
+                r2 = r2_score(y_test, y_pred)
+            else:
+                r2 = float('nan')
+            mae = mean_absolute_error(y_test, y_pred)
+            rmse = sqrt(mean_squared_error(y_test, y_pred))
 
-                # Résultats
-                st.subheader("📊 Résultats du Modèle")
-                if np.isnan(r2):
-                    st.write("**R² Score** : Non défini (moins de 2 échantillons)")
-                else:
-                    st.write(f"**R² Score** : {r2:.3f}")
+            # Affichage des métriques
+            st.subheader(f"📊 Résultats du modèle ({modele_selectionne})")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("R² Score", f"{r2:.3f}" if not np.isnan(r2) else "Non défini")
+            with col2:
+                st.metric("MAE", f"{mae:.3f}")
+            with col3:
+                st.metric("RMSE", f"{rmse:.3f}")
 
-                st.write(f"**MAE** (Erreur Absolue Moyenne) : {mae:.3f}")
-                st.write(f"**RMSE** (Erreur Quadratique Moyenne) : {rmse:.3f}")
+            # Comparaison réelle vs prédite
+            st.subheader("🔍 Comparaison Réelle vs Prédite")
+            resultat = pd.DataFrame({
+                "Réel": y_test,
+                "Prédit": y_pred
+            })
+            st.dataframe(resultat, use_container_width=True)
 
-                # Comparaison réelle vs prédite
-                st.subheader("🔍 Comparaison Réelle vs Prédit")
-                resultats = pd.DataFrame({"Valeur Réelle": y_test, "Valeur Prédit": y_pred})
-                st.write(resultats)
+            # Graphes
+            st.subheader("📈 Graphiques")
+
+            # Scatter Plot (Réel vs Prédit)
+            fig1, ax1 = plt.subplots()
+            sns.scatterplot(x=y_test, y=y_pred, ax=ax1)
+            ax1.set_xlabel("Valeurs Réelles")
+            ax1.set_ylabel("Valeurs Prédites")
+            ax1.set_title(f"Réel vs Prédit ({modele_selectionne})")
+            st.pyplot(fig1)
+
+            # Heatmap des corrélations
+            st.subheader("🧠 Heatmap des Corrélations")
+            fig2, ax2 = plt.subplots()
+            sns.heatmap(data.corr(), annot=True, cmap="coolwarm", fmt=".2f", ax=ax2)
+            st.pyplot(fig2)
+
         else:
-            st.info("ℹ️ Veuillez sélectionner au moins une colonne pour X et une pour Y.")
+            st.info("ℹ️ Sélectionnez au moins une colonne X et une colonne Y dans la barre latérale.")
+
     except Exception as e:
-        st.error(f"Erreur lors de la lecture du fichier : {e}")
-
+        st.error(f"🚨 Erreur lors de la lecture du fichier : {e}")
 else:
-    st.info("📥 Veuillez charger un fichier Excel pour commencer.")
-
+    st.info("📥 Veuillez charger un fichier Excel pour démarrer.")
